@@ -27,11 +27,11 @@ Este script transforma notebooks em servidores resilientes, utilizando a bateria
    ```
 
 3. **Configure o script:**
-   Edite o arquivo `emergencia.sh` e altere as variáveis `LOGFILE` e `NTFY_TOPIC`.
+   Edite o arquivo `esl.sh` e altere as variáveis `LOGFILE` e `NTFY_TOPIC`.
 
 4. **Torne-o executável:**
    ```bash
-   chmod +x emergencia.sh
+   chmod +x esl.sh
    ```
 
 5. **Automação (Systemd):**
@@ -43,4 +43,4 @@ Para receber os alertas no seu smartphone:
 2. Inscreva-se no tópico que você definiu na variável `NTFY_TOPIC`.
 
 ---
-*Developed by UserM4C*
+*Developed by UserM4C - Hacker do Bem*
