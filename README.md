@@ -81,6 +81,30 @@ Este script transforma notebooks em servidores resilientes, utilizando a bateria
    sudo systemctl enable --now emergency-shield.timer
    ```
 
+6. **Detecção Instantânea (udev):**
+   Por padrão, o timer verifica o estado do AC a cada minuto. Para detecção imediata ao desconectar o carregador, crie uma regra udev que dispara o serviço em tempo real:
+
+   Descubra o nome do seu adaptador AC:
+   ```bash
+   ls /sys/class/power_supply/
+   ```
+   Geralmente `AC`, `ADP1` ou `ACAD`. Use esse nome na regra abaixo:
+
+   ```bash
+   sudo nano /etc/udev/rules.d/99-emergency-shield.rules
+   ```
+   ```
+   SUBSYSTEM=="power_supply", KERNEL=="ADP1", RUN+="/bin/systemctl --no-block start emergency-shield.service"
+   ```
+   > Substitua `ADP1` pelo nome do seu adaptador.
+
+   Ative a regra:
+   ```bash
+   sudo udevadm control --reload-rules
+   ```
+
+   O timer continua rodando como fallback para monitorar a bateria durante o uso.
+
 ## 📱 Notificações Push
 Para receber os alertas no seu smartphone:
 1. Baixe o app **ntfy** (disponível para Android e iOS).
