@@ -176,6 +176,7 @@ if [ "$STATUS_AC" -eq 0 ]; then
         modo_silencioso || tocar_alarme
         CORPO="O servidor passou a operar via bateria. Carga: $CARGA_BATERIA%."
         [ -n "$TEMPO_RESTANTE" ] && CORPO="$CORPO $TEMPO_RESTANTE."
+        echo "$(date) - ENERGIA INTERROMPIDA: Operando via bateria. Carga: ${CARGA_BATERIA}%." >> "$LOGFILE"
         enviar_notificacao "ENERGIA INTERROMPIDA" "$CORPO" "high"
         touch /tmp/cabo_removido.sent
     fi
