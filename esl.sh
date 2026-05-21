@@ -48,11 +48,11 @@ enviar_notificacao() {
 }
 
 tocar_alarme() {
-    amixer set Master 100% unmute > /dev/null
+    amixer -c 1 set Master 100% unmute > /dev/null
     for i in {1..3}; do
-        speaker-test -t sine -f 1000 -l 1 & sleep 0.5; kill $!
+        speaker-test -D plughw:1,0 -t sine -f 1000 -l 1 & sleep 0.5; kill $!
         sleep 0.2
-    done &
+    done
 }
 
 # Retorna 0 (verdadeiro) se estiver dentro do horário silencioso
