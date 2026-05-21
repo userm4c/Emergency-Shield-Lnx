@@ -11,7 +11,8 @@ Este script transforma notebooks em servidores resilientes, utilizando a bateria
 * **Triagem de Rede:** Diferencia quedas de energia gerais de desconexões acidentais de cabo.
 * **Alerta Sonoro:** Alarme intermitente via `amixer` e `speaker-test` em eventos críticos.
 * **Notificações em Tempo Real:** Integração total com `ntfy.sh`.
-* **Proteção de Dados:** Executa `sync` e `hibernate` automaticamente ao atingir 30% de bateria.
+* **Proteção de Dados:** Executa `sync` e `hibernate` automaticamente ao atingir 30% de bateria. Fallback para `poweroff` caso o hibernate falhe.
+* **Notificação de Restauração:** Alerta quando a energia AC é reconectada, informando a carga atual da bateria.
 
 ## 🛠️ Instalação e Configuração
 
@@ -35,7 +36,36 @@ Este script transforma notebooks em servidores resilientes, utilizando a bateria
    ```
 
 5. **Automação (Systemd):**
-   Para monitoramento 24/7, configure um serviço no systemd que execute este script em intervalos regulares ou como um daemon.
+   Crie um serviço e um timer para executar o script a cada minuto:
+
+   `/etc/systemd/system/emergency-shield.service`
+   ```ini
+   [Unit]
+   Description=Emergency Shield Lnx
+
+   [Service]
+   Type=oneshot
+   ExecStart=/caminho/para/esl.sh
+   ```
+
+   `/etc/systemd/system/emergency-shield.timer`
+   ```ini
+   [Unit]
+   Description=Executa Emergency Shield a cada minuto
+
+   [Timer]
+   OnBootSec=1min
+   OnUnitActiveSec=1min
+
+   [Install]
+   WantedBy=timers.target
+   ```
+
+   Ative e inicie o timer:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now emergency-shield.timer
+   ```
 
 ## 📱 Notificações Push
 Para receber os alertas no seu smartphone:
