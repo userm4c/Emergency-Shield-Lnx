@@ -38,6 +38,7 @@ Este script transforma notebooks em servidores resilientes, utilizando a bateria
    |---|---|
    | `LOGFILE` | Caminho do arquivo de log |
    | `NTFY_TOPIC` | Tópico do ntfy.sh para notificações push |
+   | `DOCKER_COMPOSE_DIRS` | Caminhos absolutos dos diretórios com `docker-compose.yml` a parar/retomar (separados por espaço) |
    | `SERVICOS_GERENCIADOS` | Serviços systemd a parar antes de hibernar (separados por espaço) |
    | `HORA_SILENCIO_INICIO` | Início do modo silencioso (padrão: `22`) |
    | `HORA_SILENCIO_FIM` | Fim do modo silencioso (padrão: `7`) |

@@ -21,8 +21,11 @@ CARGA_BATERIA=$(cat /sys/class/power_supply/$BAT_NAME/capacity)
 LOGFILE="/home/SEU_USUARIO/esl.log"
 NTFY_TOPIC="seu_topico_secreto_aqui"
 
+# Diretórios com docker-compose.yml a parar/retomar (separados por espaço)
+DOCKER_COMPOSE_DIRS=""
+
 # Serviços systemd a parar antes de hibernar (separados por espaço)
-SERVICOS_GERENCIADOS="pihole-FTL"
+SERVICOS_GERENCIADOS=""
 
 # Horário do modo silencioso — alarme sonoro desativado neste intervalo
 HORA_SILENCIO_INICIO=22
@@ -69,17 +72,17 @@ calcular_tempo_restante() {
     fi
 }
 
-# Para containers Docker e serviços systemd, registrando o que foi parado
+# Para stacks Docker Compose e serviços systemd, registrando o que foi parado
 parar_servicos() {
     > "$SERVICES_FILE"
     if command -v docker &>/dev/null; then
-        local containers
-        containers=$(docker ps -q 2>/dev/null | tr '\n' ' ')
-        if [ -n "$containers" ]; then
-            echo "DOCKER:$containers" >> "$SERVICES_FILE"
-            docker stop $containers > /dev/null 2>&1
-            echo "$(date) - Containers Docker parados antes do hibernate." >> "$LOGFILE"
-        fi
+        for dir in $DOCKER_COMPOSE_DIRS; do
+            if [ -d "$dir" ]; then
+                (cd "$dir" && docker compose stop > /dev/null 2>&1)
+                echo "COMPOSE:$dir" >> "$SERVICES_FILE"
+                echo "$(date) - Compose em $dir parado antes do hibernate." >> "$LOGFILE"
+            fi
+        done
     fi
     for svc in $SERVICOS_GERENCIADOS; do
         if systemctl is-active --quiet "$svc"; then
@@ -97,9 +100,9 @@ retomar_servicos() {
     while IFS= read -r line; do
         local tipo="${line%%:*}"
         local valor="${line#*:}"
-        if [ "$tipo" = "DOCKER" ]; then
-            docker start $valor > /dev/null 2>&1
-            retomados="${retomados} Docker"
+        if [ "$tipo" = "COMPOSE" ]; then
+            (cd "$valor" && docker compose up -d > /dev/null 2>&1)
+            retomados="${retomados} $(basename "$valor")"
         elif [ "$tipo" = "SYSTEMD" ]; then
             systemctl start "$valor"
             retomados="${retomados} $valor"
