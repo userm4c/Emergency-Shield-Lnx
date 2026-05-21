@@ -111,4 +111,4 @@ Para receber os alertas no seu smartphone:
 2. Inscreva-se no tópico que você definiu na variável `NTFY_TOPIC`.
 
 ---
-*Developed by UserM4C - Hacker do Bem*
+*Developed by UserM4C*
