@@ -18,7 +18,7 @@ BAT_NAME=$(ls /sys/class/power_supply/ | grep -E '^BAT' | head -n 1)
 STATUS_AC=$(cat /sys/class/power_supply/$AC_NAME/online)
 CARGA_BATERIA=$(cat /sys/class/power_supply/$BAT_NAME/capacity)
 
-LOGFILE="/home/SEU_USUARIO/emergencia.log"
+LOGFILE="/home/SEU_USUARIO/esl.log"
 NTFY_TOPIC="seu_topico_secreto_aqui"
 
 # Serviços systemd a parar antes de hibernar (separados por espaço)
@@ -153,8 +153,10 @@ if [ "$STATUS_AC" -eq 0 ]; then
     # Pingar o gateway distingue queda geral de energia (roteador offline)
     # de simples desconexão de cabo (roteador continua respondendo),
     # evitando hibernação indevida durante oscilações momentâneas do AC.
+    # Aguarda o NIC estabilizar após a oscilação AC→bateria antes de pingar
+    sleep 10
     GATEWAY=$(ip route | awk '/default/ {print $3; exit}')
-    if [ -z "$GATEWAY" ] || ! ping -c 2 -W 2 "$GATEWAY" > /dev/null 2>&1; then
+    if [ -z "$GATEWAY" ] || ! ping -c 3 -W 3 "$GATEWAY" > /dev/null 2>&1; then
         echo "$(date) - CRÍTICO: Roteador inacessível e sem energia. Queda geral detectada. Protegendo..." >> "$LOGFILE"
         modo_silencioso || tocar_alarme
         enviar_notificacao "QUEDA GERAL DE ENERGIA" "Roteador inacessível. Hibernando para preservar integridade." "urgent"
