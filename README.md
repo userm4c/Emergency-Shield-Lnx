@@ -7,12 +7,16 @@ Este script transforma notebooks em servidores resilientes, utilizando a bateria
 
 ## 🚀 Funcionalidades
 * **Monitoramento AC:** Detecta instantaneamente a perda de energia externa.
-* **Alertas Progressivos:** Notificações via Push a cada 10% de queda na bateria (90%, 80%, 70%...).
-* **Triagem de Rede:** Diferencia quedas de energia gerais de desconexões acidentais de cabo.
+* **Alertas Progressivos:** Notificações via Push a cada 10% de queda na bateria (90%, 80%, 70%...), com estimativa de tempo restante em cada alerta.
+* **Triagem de Rede:** Diferencia quedas de energia gerais de desconexões acidentais de cabo via ping ao gateway.
 * **Alerta Sonoro:** Alarme intermitente via `amixer` e `speaker-test` em eventos críticos.
-* **Notificações em Tempo Real:** Integração total com `ntfy.sh`.
-* **Proteção de Dados:** Executa `sync` e `hibernate` automaticamente ao atingir 30% de bateria. Fallback para `poweroff` caso o hibernate falhe.
+* **Modo Silencioso:** Alarme sonoro desativado automaticamente em horário configurável (padrão: 22h–7h). Notificação push continua ativa.
+* **Notificações em Tempo Real:** Integração total com `ntfy.sh`, com prioridade por severidade (`urgent` / `high` / `default`).
+* **Proteção de Dados:** Para serviços Docker e systemd antes de hibernar. Executa `sync` e `hibernate` ao atingir 30% de bateria. Fallback para `poweroff` caso o hibernate falhe.
+* **Retomada Automática:** Ao acordar do hibernate, reinicia os serviços que foram parados e envia notificação de confirmação.
 * **Notificação de Restauração:** Alerta quando a energia AC é reconectada, informando a carga atual da bateria.
+* **Saúde da Bateria:** Notifica semanalmente se a capacidade máxima estiver abaixo de 70% da capacidade original.
+* **Rotação de Log:** Mantém o arquivo de log abaixo de 500 KB automaticamente.
 
 ## 🛠️ Instalação e Configuração
 
@@ -28,7 +32,16 @@ Este script transforma notebooks em servidores resilientes, utilizando a bateria
    ```
 
 3. **Configure o script:**
-   Edite o arquivo `esl.sh` e altere as variáveis `LOGFILE` e `NTFY_TOPIC`.
+   Edite o arquivo `esl.sh` e ajuste as variáveis na seção `CONFIGURAÇÕES PERSONALIZÁVEIS`:
+
+   | Variável | Descrição |
+   |---|---|
+   | `LOGFILE` | Caminho do arquivo de log |
+   | `NTFY_TOPIC` | Tópico do ntfy.sh para notificações push |
+   | `SERVICOS_GERENCIADOS` | Serviços systemd a parar antes de hibernar (separados por espaço) |
+   | `HORA_SILENCIO_INICIO` | Início do modo silencioso (padrão: `22`) |
+   | `HORA_SILENCIO_FIM` | Fim do modo silencioso (padrão: `7`) |
+   | `LOG_MAX_KB` | Tamanho máximo do log em KB antes de rotacionar (padrão: `500`) |
 
 4. **Torne-o executável:**
    ```bash
