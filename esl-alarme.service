@@ -1,0 +1,8 @@
+[Unit]
+Description=Emergency Shield Lnx - Alarme Sonoro
+After=sound.target
+
+[Service]
+Type=simple
+ExecStart=/home/m4c/Emergency-Shield-Lnx/esl-alarme.sh
+Restart=no

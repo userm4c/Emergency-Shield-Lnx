@@ -1,0 +1,13 @@
+[Unit]
+Description=Emergency Shield Lnx - Listener de Comandos
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/m4c/Emergency-Shield-Lnx/esl-comandos.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
