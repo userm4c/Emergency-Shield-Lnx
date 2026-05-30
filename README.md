@@ -1,114 +1,130 @@
-# 🛡️ Emergency-Shield-Lnx - ESL
+# 🛡️ Emergency Shield Lnx — ESL
 
 > **Status:** Operational
-> **Goal:** Data Integrity & Power Management
+> **Goal:** Data Integrity, Power Management & Remote Control
 
-Este script transforma notebooks em servidores resilientes, utilizando a bateria interna como um UPS (Nobreak) inteligente com monitoramento progressivo.
-
-## 🚀 Funcionalidades
-* **Monitoramento AC:** Detecta instantaneamente a perda de energia externa.
-* **Alertas Progressivos:** Notificações via Push a cada 10% de queda na bateria (90%, 80%, 70%...), com estimativa de tempo restante em cada alerta.
-* **Triagem de Rede:** Diferencia quedas de energia gerais de desconexões acidentais de cabo via ping ao gateway.
-* **Alerta Sonoro:** Alarme intermitente via `amixer` e `speaker-test` em eventos críticos.
-* **Modo Silencioso:** Alarme sonoro desativado automaticamente em horário configurável (padrão: 22h–7h). Notificação push continua ativa.
-* **Notificações em Tempo Real:** Integração total com `ntfy.sh`, com prioridade por severidade (`urgent` / `high` / `default`).
-* **Proteção de Dados:** Para serviços Docker e systemd antes de hibernar. Executa `sync` e `hibernate` ao atingir 30% de bateria. Fallback para `poweroff` caso o hibernate falhe.
-* **Retomada Automática:** Ao acordar do hibernate, reinicia os serviços que foram parados e envia notificação de confirmação.
-* **Notificação de Restauração:** Alerta quando a energia AC é reconectada, informando a carga atual da bateria.
-* **Saúde da Bateria:** Notifica semanalmente se a capacidade máxima estiver abaixo de 70% da capacidade original.
-* **Rotação de Log:** Mantém o arquivo de log abaixo de 500 KB automaticamente.
-
-## 🛠️ Instalação e Configuração
-
-1. **Instale as dependências:**
-   ```bash
-   sudo apt update && sudo apt install alsa-utils curl
-   ```
-
-2. **Clone o repositório:**
-   ```bash
-   git clone https://github.com/userm4c/Emergency-Shield-Lnx.git
-   cd Emergency-Shield-Lnx
-   ```
-
-3. **Configure o script:**
-   Edite o arquivo `esl.sh` e ajuste as variáveis na seção `CONFIGURAÇÕES PERSONALIZÁVEIS`:
-
-   | Variável | Descrição |
-   |---|---|
-   | `LOGFILE` | Caminho do arquivo de log |
-   | `NTFY_TOPIC` | Tópico do ntfy.sh para notificações push |
-   | `DOCKER_COMPOSE_DIRS` | Caminhos absolutos dos diretórios com `docker-compose.yml` a parar/retomar (separados por espaço) |
-   | `SERVICOS_GERENCIADOS` | Serviços systemd a parar antes de hibernar (separados por espaço) |
-   | `HORA_SILENCIO_INICIO` | Início do modo silencioso (padrão: `22`) |
-   | `HORA_SILENCIO_FIM` | Fim do modo silencioso (padrão: `7`) |
-   | `LOG_MAX_KB` | Tamanho máximo do log em KB antes de rotacionar (padrão: `500`) |
-
-4. **Torne-o executável:**
-   ```bash
-   chmod +x esl.sh
-   ```
-
-5. **Automação (Systemd):**
-   Crie um serviço e um timer para executar o script a cada minuto:
-
-   `/etc/systemd/system/emergency-shield.service`
-   ```ini
-   [Unit]
-   Description=Emergency Shield Lnx
-
-   [Service]
-   Type=oneshot
-   ExecStart=/caminho/para/esl.sh
-   ```
-
-   `/etc/systemd/system/emergency-shield.timer`
-   ```ini
-   [Unit]
-   Description=Executa Emergency Shield a cada minuto
-
-   [Timer]
-   OnBootSec=1min
-   OnUnitActiveSec=1min
-
-   [Install]
-   WantedBy=timers.target
-   ```
-
-   Ative e inicie o timer:
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now emergency-shield.timer
-   ```
-
-6. **Detecção Instantânea (udev):**
-   Por padrão, o timer verifica o estado do AC a cada minuto. Para detecção imediata ao desconectar o carregador, crie uma regra udev que dispara o serviço em tempo real:
-
-   Descubra o nome do seu adaptador AC:
-   ```bash
-   ls /sys/class/power_supply/
-   ```
-   Geralmente `AC`, `ADP1` ou `ACAD`. Use esse nome na regra abaixo:
-
-   ```bash
-   sudo nano /etc/udev/rules.d/99-emergency-shield.rules
-   ```
-   ```
-   SUBSYSTEM=="power_supply", KERNEL=="ADP1", RUN+="/bin/systemctl --no-block start emergency-shield.service"
-   ```
-   > Substitua `ADP1` pelo nome do seu adaptador.
-
-   Ative a regra:
-   ```bash
-   sudo udevadm control --reload-rules
-   ```
-
-   O timer continua rodando como fallback para monitorar a bateria durante o uso.
-
-## 📱 Notificações Push
-Para receber os alertas no seu smartphone:
-1. Baixe o app **ntfy** (disponível para Android e iOS).
-2. Inscreva-se no tópico que você definiu na variável `NTFY_TOPIC`.
+Transforma notebooks em servidores resilientes, usando a bateria interna como um UPS inteligente com monitoramento progressivo, alarme contínuo e controle remoto completo via [ntfy](https://ntfy.sh).
 
 ---
+
+## 🚀 Funcionalidades
+
+### Monitoramento de Energia
+- **Detecção instantânea de queda de AC** via regra udev (sem esperar o timer)
+- **Alertas progressivos** a cada 10% de descarga (90% → threshold de hibernação)
+- **Hibernação automática** no nível configurável (padrão: 30%), com fallback para poweroff
+- **Triagem de rede** — diferencia queda geral de energia de desconexão de cabo via ping ao gateway
+- **Dreno rápido** — alerta se a taxa de descarga ultrapassar o limite configurável (%/min)
+- **Temperatura da bateria** — alerta se exceder o limite em °C (quando o hardware expõe o sensor)
+- **Saúde da bateria** — notificação semanal se a capacidade cair abaixo do limite configurável
+- **Suporte a múltiplas baterias** (BAT0 + BAT1, etc.) com cálculo combinado de carga
+
+### Alarme Sonoro
+- Loop contínuo via serviço systemd dedicado (`esl-alarme.service`) — para automaticamente quando o AC volta
+- **Modo silencioso** configurável por horário (padrão: 22h–7h) — notificações push continuam ativas
+- **Modo teste** via comando remoto (`TESTAR_ALARME`)
+
+### Controle Remoto via ntfy
+Serviço listener (`esl-comandos.service`) sempre ativo, com 27 comandos agrupados em 5 categorias:
+
+| Categoria | Exemplos |
+|---|---|
+| 🔔 Alarme | `PARAR_ALARME`, `MUDO [min]`, `TESTAR_ALARME [seg]` |
+| 📋 Informações | `PING`, `STATUS`, `DISCO`, `PROCESSOS`, `HISTORICO`, `LOGS`, `UPDATES` |
+| 🌐 Rede | `IP_EXTERNO`, `PING_HOST [host]`, `DNS [dominio]`, `QUEM_CONECTADO`, `CONEXOES` |
+| 🐳 Docker | `STATUS_DOCKER`, `REINICIAR_SERVICOS`, `REINICIAR_CONTAINER [nome]`, `LOGS_CONTAINER [nome]` |
+| ⚡ Energia | `HIBERNAR`, `REINICIAR`, `AGENDAR_REINICIO [HH:MM]`, `DESLIGAR`, `LIMPAR_KERNELS` |
+
+> Envie `AJUDA` pelo ntfy para ver a lista completa a qualquer momento.
+
+### Proteção de Dados
+- Para serviços Docker Compose e systemd antes de hibernar
+- Executa `sync` antes do hibernate
+- **Retomada automática** ao acordar — reinicia os serviços parados e envia confirmação
+
+### Logs e Histórico
+- Log texto rotacionado automaticamente (padrão: 500KB, mantém últimas 100 linhas)
+- **Histórico JSON** em newline-delimited format — compatível com `jq`, Grafana e similares
+- Updates do sistema verificados diariamente com deduplicação por hash MD5
+
+---
+
+## 📁 Estrutura de Arquivos
+
+```
+Emergency-Shield-Lnx/
+├── esl.sh                  # Script principal de monitoramento
+├── esl.conf                # Configurações do usuário (não sobrescrito pelo git pull)
+├── esl-alarme.sh           # Alarme em loop contínuo
+├── esl-alarme.service      # Unit systemd do alarme
+├── esl-comandos.sh         # Listener de 27 comandos via ntfy
+├── esl-comandos.service    # Unit systemd do listener
+└── install.sh              # Instalador automatizado
+```
+
+---
+
+## 🛠️ Instalação
+
+```bash
+git clone https://github.com/userm4c/Emergency-Shield-Lnx.git
+cd Emergency-Shield-Lnx
+cp esl.conf esl.conf  # já existe — edite antes de instalar
+sudo bash install.sh
+```
+
+O `install.sh` cuida de tudo: dependências, permissões, detecção de hardware, criação dos units systemd, regra udev e ativação dos serviços.
+
+---
+
+## ⚙️ Configuração (`esl.conf`)
+
+Edite o arquivo **antes** de instalar. Após a instalação, `git pull` não sobrescreve suas configurações.
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `LOGFILE` | — | Caminho do arquivo de log |
+| `ESL_HISTORY` | — | Caminho do histórico JSON |
+| `NTFY_TOPIC` | — | Tópico ntfy para notificações e comandos |
+| `DOCKER_COMPOSE_DIRS` | `""` | Diretórios com docker-compose a parar/retomar |
+| `SERVICOS_GERENCIADOS` | `""` | Serviços systemd a parar antes do hibernate |
+| `LIMITE_HIBERNACAO` | `30` | % de bateria para hibernar |
+| `LIMITE_DRENO_RAPIDO` | `2` | Taxa de descarga anormal em %/min |
+| `LIMITE_TEMP_BATERIA` | `45` | Temperatura máxima da bateria em °C |
+| `LIMITE_SAUDE_BATERIA` | `70` | Saúde mínima da bateria em % |
+| `HORA_SILENCIO_INICIO` | `22` | Início do modo silencioso |
+| `HORA_SILENCIO_FIM` | `7` | Fim do modo silencioso |
+| `LOG_MAX_KB` | `500` | Tamanho máximo do log antes de rotacionar |
+
+---
+
+## 📱 Notificações Push
+
+1. Baixe o app **ntfy** (Android / iOS)
+2. Inscreva-se no tópico definido em `NTFY_TOPIC`
+3. Use o mesmo tópico para enviar comandos remotos
+
+---
+
+## 🔧 Comandos Úteis de Manutenção
+
+```bash
+# Ver logs do ESL em tempo real
+journalctl -fu emergency-shield.service
+
+# Ver logs do listener de comandos
+journalctl -fu esl-comandos.service
+
+# Reiniciar o listener após atualizar esl-comandos.sh
+sudo systemctl restart esl-comandos.service
+
+# Testar o script manualmente
+sudo rm -f /tmp/emergencia.lock && sudo bash -x ~/Emergency-Shield-Lnx/esl.sh
+
+# Verificar espaço em /boot
+df -h /boot
+```
+
+---
+
 *Developed by UserM4C*
