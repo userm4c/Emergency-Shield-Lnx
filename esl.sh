@@ -83,15 +83,19 @@ verificar_updates() {
     ultima=0
     [ -f "$UPDATE_FILE" ] && ultima=$(stat -c %Y "$UPDATE_FILE" 2>/dev/null || echo 0)
     [ $(( agora - ultima )) -lt 86400 ] && return
+    # Marca já a tentativa: sem isso, quando a lista repetia a já notificada,
+    # o arquivo nunca era tocado e o apt rodava a cada disparo do timer.
+    touch "$UPDATE_FILE"
 
     # Atualiza a lista de pacotes silenciosamente
     apt-get update -qq 2>/dev/null || return
 
-    # Conta pacotes com upgrade disponível
-    local total seguranca lista
-    total=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst' || echo 0)
-    seguranca=$(apt-get -s upgrade 2>/dev/null | grep '^Inst' | grep -ci 'security' || echo 0)
-    lista=$(apt-get -s upgrade 2>/dev/null | grep '^Inst' | awk '{print $2}' | head -10 | tr '\n' ',' | sed 's/,$//')
+    # Conta pacotes com upgrade disponível (uma simulação só, reaproveitada)
+    local total seguranca lista simulacao
+    simulacao=$(apt-get -s upgrade 2>/dev/null | grep '^Inst')
+    total=$(printf '%s\n' "$simulacao" | grep -c '^Inst' || true)
+    seguranca=$(printf '%s\n' "$simulacao" | grep -ci 'security' || true)
+    lista=$(printf '%s\n' "$simulacao" | awk '{print $2}' | head -10 | tr '\n' ',' | sed 's/,$//')
 
     [ "$total" -eq 0 ] && { touch "$UPDATE_FILE"; return; }
 
